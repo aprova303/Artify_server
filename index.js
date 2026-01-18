@@ -3,6 +3,7 @@ const app = express()
 const cors = require('cors')
 const port = 3000
 
+// Enable CORS for cross-origin requests
 app.use(cors())
 app.use(express.json())
 
