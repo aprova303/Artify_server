@@ -28,29 +28,32 @@ async function run() {
     const db = client.db('artify-db')
     const artCollection = db.collection('art-info')
 
-
-  app.get('/arts', async(req,res)=>{
-    const result =await artCollection.find().toArray()
-      console.log(result)
-    res.send(result)
-  })
-
+    app.get('/arts', async(req,res)=>{
+      try {
+        const result = await artCollection.find().toArray()
+        console.log("Arts fetched:", result.length)
+        res.send(result)
+      } catch(err) {
+        console.error("Error fetching arts:", err)
+        res.status(500).send({error: "Failed to fetch arts"})
+      }
+    })
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  } finally {
     
+    // Start server only after connection is successful
+    app.listen(port, () => {
+      console.log(`Example app listening on port ${port}`)
+    })
+  } catch(err) {
+    console.error("MongoDB connection failed:", err);
+    process.exit(1);
   }
 }
-run().catch(console.dir);
-
-
-
 
 app.get('/', (req, res) => {
   res.send('Hello World!')
 })
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+run().catch(console.dir);
