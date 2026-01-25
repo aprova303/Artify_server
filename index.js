@@ -146,28 +146,34 @@ async function run() {
         const likedBy = artwork.likedBy || []
         const isLiked = likedBy.includes(userId)
 
-        let updateData = {}
         if(isLiked) {
-          updateData = {
-            likedBy: likedBy.filter(u => u !== userId),
-            likesCount: (artwork.likesCount || 0) - 1
-          }
+          // Remove like using $pull and $inc
+          await artworkCollection.updateOne(
+            { _id: new ObjectId(id) },
+            {
+              $pull: { likedBy: userId },
+              $inc: { likesCount: -1 }
+            }
+          )
         } else {
-          updateData = {
-            likedBy: [...likedBy, userId],
-            likesCount: (artwork.likesCount || 0) + 1
-          }
+          // Add like using $push and $inc
+          await artworkCollection.updateOne(
+            { _id: new ObjectId(id) },
+            {
+              $push: { likedBy: userId },
+              $inc: { likesCount: 1 }
+            }
+          )
         }
 
-        await artworkCollection.updateOne(
-          { _id: new ObjectId(id) },
-          { $set: updateData }
-        )
+        const updatedArtwork = await artworkCollection.findOne({
+          _id: new ObjectId(id)
+        })
 
         res.send({
           success: true,
           isLiked: !isLiked,
-          likes: updateData.likesCount
+          likes: updatedArtwork.likesCount || 0
         })
       } catch(err) {
         console.error("Error updating like:", err)
@@ -253,28 +259,6 @@ async function run() {
       }
     })
 
-    // Check if artwork is favorited
-    app.get('/api/favorites/:artworkId/:userId', async(req,res)=>{
-      try {
-        const { artworkId, userId } = req.params
-        const favorite = await favoritesCollection.findOne({
-          artworkId: new ObjectId(artworkId),
-          userId: userId
-        })
-
-        res.send({
-          success: true,
-          isFavorited: !!favorite
-        })
-      } catch(err) {
-        console.error("Error checking favorite status:", err)
-        res.status(500).send({
-          success: false,
-          error: "Failed to check favorite status"
-        })
-      }
-    })
-
     // Get user's favorites
     app.get('/api/favorites/user/:userId', async(req,res)=>{
       try {
@@ -294,6 +278,28 @@ async function run() {
         res.status(500).send({
           success: false,
           error: "Failed to fetch favorites"
+        })
+      }
+    })
+
+    // Check if artwork is favorited
+    app.get('/api/favorites/:artworkId/:userId', async(req,res)=>{
+      try {
+        const { artworkId, userId } = req.params
+        const favorite = await favoritesCollection.findOne({
+          artworkId: new ObjectId(artworkId),
+          userId: userId
+        })
+
+        res.send({
+          success: true,
+          isFavorited: !!favorite
+        })
+      } catch(err) {
+        console.error("Error checking favorite status:", err)
+        res.status(500).send({
+          success: false,
+          error: "Failed to check favorite status"
         })
       }
     })
